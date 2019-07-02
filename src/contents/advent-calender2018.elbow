@@ -1,0 +1,172 @@
+((*contents-date* "2018-12-14")
+ (*contents-title* "実装が大変なschemeの機能の紹介")
+ (*contents-tags* ("Scheme"))
+ (*contents-body* 
+ (begin
+    `(div
+      (a (@ (href "https://qiita.com/advent-calendar/2018/lisp")) "lisp Advent Calendar 2018") " の14日目の記事です。" (br)
+         "実装が大変なschemeの機能の紹介をします。"(br)
+         "仕様はR7RS smallがターゲットです。"
+         "後半になるにつれて雑になります。"(br)
+
+      (h2 "目次")
+
+          (a (@ (href "#callcc")) "1.継続 call/cc")(br)
+          (a (@ (href "#dynamic-wind")) "2.dynamic-wind")(br)
+          (a (@ (href "#equal")) "3.equal?")(br)
+          (a (@ (href "#values")) "4.多値")(br)
+          (a (@ (href "#syntax-rules")) "5.マクロ syntax-rules")(br)
+
+
+      (h2 (@ (id "callcc")) "1.継続 call/cc")
+
+            "Schemeでcall-with-current-continuation、略すとcall/ccという手続きがあります。" (br)
+            "現在の継続を第一引数の手続きに渡すというものです。"(br)
+            "継続は次の計算のことです。"(br)
+            "Schemeではこれをオブジェクトとして使えて、外側の脱出だけでなく内側に突入したりできます。"(br)
+            "うまく説明できる気がしないので継続のまともな説明は省略します。"
+
+
+            (h4 "実装方針1 プログラムをCPSに変形する。")
+            "CPS(継続渡しスタイル)はプログラム中のすべての継続を取り出して陽に表す形式です。"(br)
+            "計算の途中をくくりだせるので、コンパイラの中間言語としても使われます。SSAと同じような使われ方です。"(br)
+
+
+            "CPS変換の例"(br)(br)
+
+            "・元の式"
+            (pre " (define (fact x res)
+     (if (zero? x)
+         res
+        (fact (- x 1) (* x res))))")
+            (br)
+
+            "・CPS変換した式"
+
+                (pre " (define (fact x res K0)
+    (zero?& x 
+        (lambda (K1)
+            (if K1
+                (K0 res)
+                (- x 
+                   1
+                   (lambda (K2)
+                       (* 
+                        x 
+                        res
+                         (lambda (K3)
+                            (fact K2 K3 K0)))))))))")
+            
+             (br)(br)
+            "そして、CPS変換するとcall/ccはこのようにかけます"(br)
+            (pre "(define (call/cc proc K0)
+    (proc K0 K0))")
+
+            "見ての通りCPS変換には、コードが長くなったり、手続き呼び出しが増えるという欠点がありますが、"(br)
+
+            "　　・この形式に変換すると、すべての手続き呼び出しはreturn考えなくてもよくなるので、末尾呼び出し最適化のサポートもそれほど苦労することなく実現できる"(br)
+            "　　・CPSは最適化しやすい形に式が変換されるので、ついでにいろいろな最適化(例えば、同じ計算を省いたり)を適用できる"(br)
+            "というメリットがあります。" (br)
+            "それから、CPS変換で継続を実装する場合、組み込みの手続きもすべてCPSにしなくてはいけないので後から実装しにくい方針です。"
+
+            (h4 "実装方針2 VMの状態を保存する")
+            "call/ccした時にVMの状態を保存して、継続を呼び出した時にそれをロードすることで、call/ccした直後に飛ぶという方針です。"(br)
+            "C言語のsetjmp/longjmpみたいな感じです。"(br)
+            "CPSよりかは、後からでも実装しやすいと思います。"(br)
+
+     (h2 (@ (id "dynamic-wind"))"2.dynamic-wind")
+        "dynamic-windは継続を使ってジャンプした場合でも状態を適切に保つようにできる手続きです。"(br)(br)
+        "例えば、ある処理の内では状態を1その外側では2としたい場合はこうなると思います。"(br)
+        (pre "(set! state 1)
+;ある処理
+(set! state 2)")
+     "継続があると、後処理の前に'ある処理'の外に飛び出したり、前処理の前に外から'ある処理'に突入したりする可能性があり、正しく動作する保証がないです。"(br)
+        "dynamic-windは、継続によるジャンプを捕捉して前処理、後処理を行うように設定する手続きです。"(br)
+        "上の例にdynamic-windを使うとこうなります。"(br)
+        (pre "(dynamic-wind
+    (lambda () (set! state 1))
+    (lambda ()
+      ;ある処理
+      )
+    (lambda () (set! state 2)))")
+     
+        (br)
+
+      (h4 "実装方針")
+      "dynamic-windの作った設定をcall/cc時に継続オブジェクト内に保存して、呼び出した時に現在のdynamic-windの設定と比較して前処理や後処理を実行させるという方針です。"(br)
+      "例えば、下のようにジャンプしたとしましょう。lambdaは見難いので省きます。"(br)
+      ,(if (null? *contents-root-relative-path*)
+          ""
+          `(img (@ (src ,(string-append *contents-root-relative-path* "/contents_resources/201812/dynamic-wind1.png")))))
+      
+      (br)(br)"そして、ジャンプ元とジャンプ先のdynamic-windによる環境を比較すると、こうなります。"(br)
+      ,(if (null? *contents-root-relative-path*)
+          ""
+          `(img (@ (src ,(string-append *contents-root-relative-path* "/contents_resources/201812/dynamic-wind2.png")))))
+      (br)(br)
+      "後処理3 →　後処理2 → 前処理4 の順番に処理すれば良いことがわかりますね。"(br)
+      ,(if (null? *contents-root-relative-path*)
+          ""
+          `(img (@ (src ,(string-append *contents-root-relative-path* "/contents_resources/201812/dynamic-wind3.png")))))
+      (br)(br)
+      "アルゴリズムとしては、"(br)
+      "　1.FROMからTOと共通部分にぶつかるまでFROMの後処理を実行していく。"(br)
+      "　2.共通部分からTOまでTOの前処理を実行していく。"(br)
+      "となります。"(br)
+
+   (h2 (@ (id "equal")) "3.equal?")
+       "equal?は比較手続きのひとつです。"(br)
+       "printした結果が正しいとか、コンテナ(listやvector)を再帰的に比較して正しいとかそういうやつです。"(br)
+       "ナイーブな実装はやるだけなのでそれほど難しくはありませんが、R7RSでは引数が循環構造でも必ず停止しなければならないという条件が加えられたので、少し大変になりました。"(br)
+       (h4 "実装方針")
+       "UnionFindを使うと効率よく循環構造を比較できます。この実装方針をどこかで読んだのですがどこで呼んだのか忘れてしまいました。"(br)
+       "UnionFindとはUnionとFindの2つの操作ができるアルゴリズムです。"(br)
+       "　　Union:2つのオブジェクトは同じグループであると定義する。"(br)
+       "　　Find:2つのオブジェクトが同じグループか判定する。"(br)
+       "これを一度比較したものをUnionして、毎回比較前にfindして同じグループならばそれ以上再帰的に比較しないようにするという方針です。"(br)
+
+
+
+   (h2 (@ (id "values"))"4.多値")
+       "値を返すことと、継続に値を渡すことは等価なので、"(br)
+       "多値によって複数の値を返せることは、継続に複数の値を渡せるということです。"(br)
+       "定義によるとvaluesはこうなっています"(br)
+       (pre " (define (values . things)
+    (call-with-current-continuation
+    (lambda (cont) (apply cont things))))")
+       "継続が複数の値をとれることをサポートしていれば、問題はないのですが、"(br)
+       "継続が複数の値をとれることを忘れていて、継続の実装を修正する羽目になりました。"(br)
+       "実装楽そうに見えていたのですが、上のvaluesとCPS変換の相性が良くなかったことが障害となりました。"(br)
+       "結局、多値オブジェクトというものを導入しましたが、評価器の実装が複雑になってろくでもないことになりました。"(br)
+
+   (h2 (@ (id "syntax-rules")) "5.マクロ syntax-rules")
+        "R7RS-small Schemeのマクロsyntax-rulesは伝統的なマクロと異なりevalと切り離されていて、自動で名前空間の衝突を回避する機構が備わっています。"(br)
+        (br)
+        "let風のマクロはsyntax-rulesで書くとこんなかんじになります。"
+        (pre "(define-syntax  my-let
+    (syntax-rules ()
+       ((_ ((name value) ... ) body ... )
+          ((lambda (name ... ) body ... ) value ... ))))")
+        "見ての通り、Schemeのマクロはパターンマッチ的なものです。"(br)
+        "my-letとマッチさせる部分の\"((name value) ...)\"は展開部では\"name ... \"や\"value ... \"という風に分解する実装が面倒です。"(br)
+        "繰り返し\"...\"がネストしている部分とか実装バグらせまくりでした。"(br)(br)
+        "パターンが非真性リスト(P1 P2 ... Pn . Pm) の場合、<br>
+            　　・同じ形の非真性リスト(P1 P2 .. Pn . Pm) と<br>
+            　　・長さn以上の真性リスト(P1 P2 ... Pn Pn1 Pn2 Pn3 .. )  ;n+1以降はリストとしてPmにマッチする<br>
+            の2通りにマッチできる仕様も場合分けが大変でした。"(br)
+        (br)
+        "今度実装するときは、より実装の楽なマクロ(explicit-renamingとか)でポータブルに書いて使いまわせるようにしようと思います。"(br)
+        "ちなみに、explicit-renamigでlet風のものをかくとこうなります。"
+        (pre " (define-syntax my-let
+   (er-macro-transformer
+     (lambda (form rename compare)
+       (let  ((bindings (cadr form))
+              (bodies (cddr form)))
+         `((,(rename 'lambda) ,(map car bindings) ,@bodies) ,@(map cadr bindings))))))")
+        (br)
+        "explicit-renamingはScheme eval + 名前衝突回避機構だけで実装ができるので、syntax-rulesより楽に実装できます。"(br)
+        "syntax-rulesでは全部自動的に衝突を回避してしまってアナフォリックマクロとかができないという欠点がありますが、explicit-renamigはそれができるのでより強力です。"
+
+   (h2 "終わり")
+   "これらの実装は大変でしたが、一番楽しかったような気がします。"
+))))
