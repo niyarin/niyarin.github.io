@@ -45,14 +45,7 @@ body{
 }
 
 .main-contents {
-    color:#0b5394;
-    background-color:#FFFFFF;
-    padding:30px;
-    min-height:93%;
-}
-
-.main-contents :visited{
-    color:#0b5394;
+    color:#666666;
     background-color:#FFFFFF;
     padding:30px;
     min-height:93%;
@@ -65,8 +58,15 @@ body{
 }
 
 .main-contents-title a{
+    color:#0b5394;
     text-decoration: none;
 }
+
+.main-contents-title a :visited{
+    color:#0b5394;
+    text-decoration: none;
+}
+
 
 .time-box{
     text-align:right;
