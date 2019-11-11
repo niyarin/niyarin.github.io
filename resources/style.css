@@ -31,7 +31,7 @@ body{
 @media only screen and (min-width:767px) {
     .sidemenu-wrapper{
         width:240px;
-        background-color:#777777;
+        background-color:#555555;
         overflow:hidden;
     }
 }
@@ -93,9 +93,14 @@ h1 {
     border-bottom: 2px solid #AAAAAA;
 }
 
+h3 {
+   font-size:18px;
+}
+
 .main pre {
     border: 2px solid #AAAAAA;
-    margin-top:0px;
+    margin-top:3px;
+    margin-bottom:3px;
 }
 
 .tag{
