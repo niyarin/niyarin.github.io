@@ -1,6 +1,12 @@
 ((*contents-date* "2019-12-04")
  (*contents-title* "Chezのcall/cc論文の紹介(のようなもの)")
  (*contents-tags* ("Scheme"))
+ (*contents-head-tag*
+    ((meta (@ (name "twitter:card")(content "summary"))) 
+     (meta (@ (name "og:title")(content "Chezのcall/cc論文の紹介(のようなもの)")))
+     (meta (@ (name "og:description")(content  "Lisp Advent Calendar2019 4日目の記事です。 Chez Schemeのcall/cc論文を読んでまとめました。")))
+     (meta (@ (name "og:image")(content "https://niyarin.github.io/contents_resources/scheme_niyarin.png")))))
+    
  (*contents-body* 
      (begin
         `(div
