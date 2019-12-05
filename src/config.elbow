@@ -1,4 +1,4 @@
 ((*site-title* "Niyarin's blog") 
  (*site-author-name* "Niyarin") 
  (*site-author-page* (begin (string-append *contents-root-relative-path* "/contents/about_me.html")))
- (*site-author-explain* ""))
+ (*site-author-explain* "SchemerでClojurian."))
