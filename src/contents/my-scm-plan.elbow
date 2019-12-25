@@ -1,0 +1,81 @@
+((*contents-date* "2019-12-22")
+ (*contents-title* "あとで実装するありがちなScheme処理系実装方針(CPS+トランポリン)")
+ (*contents-tags* ("Scheme"))
+ (*contents-head-tag*
+    ((meta (@ (name "twitter:card")(content "summary"))) 
+     (meta (@ (name "og:title")(content "ありがちなScheme処理系実装方針の説明")))
+     (meta (@ (name "og:description")(content  "言語実装 Advent Calendar2019 22日目の記事。物を作る時間がなかったので方針だけ説明した。")))
+     (meta (@ (name "og:image")(content "https://niyarin.github.io/contents_resources/scheme_niyarin.png")))))
+ (*contents-body* 
+    `(div
+      (a (@ (href "https://qiita.com/advent-calendar/2019/lang_dev")) "言語実装 Advent Calendar 2019") " の22日目の記事です。" (br)
+      "本当はgotoの無い環境で継続と末尾呼び出し最適化をする処理系の紹介をするつもりだったのですが、ものができていないので方針のようなものだけ説明します。実行ターゲットは、JavaScriptかWebAssemblyのつもりです。"
+      "ありがちですが、CPS変換とトランポリンの2つのことをやるだけです。"
+      "Scheme処理系でこういった方針をとるものはすでに他に作られていて、ChickenSchemeなどといった処理系がそのような方針をとります。"
+      "今回、ものができていないくて内容がすくない上に紹介するものが割とみんな知っている知識なので、CPS+トランポリンを採用している処理系のChickenSchemeのメモリ管理についても紹介します。"
+      (h3 "中間表現としてCPS変換する利点")
+      "Scheme処理系を書く上でCPS変換するメリットとはこの3点。"
+      (ul 
+        (li "1.最適化しやすい中間表現")
+        (li "2.継続の実装としてつかえる")
+        (li "3.末尾呼び出しへの変換"))
+
+"CPS変換の例↓"(br)
+"元の式"
+      (pre 
+"(+ (+ a b) (+ c (+ a b)))")
+
+"CPS変換した式"
+      (pre 
+"(+ (λ (k1) 
+     (+ (λ (k2)
+         (+ (λ (k3)
+             (+ BREAK 
+              k2 k3))
+          a b))
+      c k1))
+ a b)")
+
+"最適化のしやすい表現というのは、計算の途中部分をくくりだせることと、コードを木構造的に処理していたのが直線的になるのがしやすいということです。"
+"それから、すべての呼び出しが末尾呼び出しになるので、returnしないという意味で、スタックが不要(gotoに変換できる)な形式になります。"
+"もともと非末尾呼び出しだったものをcps変換すると、実行時に呼び出しの深さに応じた長さのclosureが生成されるので、もともと末尾呼び出しだったものだけに恩恵があります。"
+
+
+      (h3 "トランポリン")
+      "CPS変換後、gotoに変換することで末尾呼び出し最適化できることは説明しましたが、
+      gotoがない/末尾呼び出し最適化がない言語をターゲットにすることはよくあることだとおもいますが、"
+      "(WebAssemblyとかJavaScriptとかPythonとか)"
+      "トランポリンというものを使えば関数呼び出しのスタックを定数長(呼び出しのネストに依存しない)に押さえることができます。"
+      (br)
+      "トランポリンするコードが↓です。"
+      (pre "(define (trampoline-loop code val)
+    (let-values (((res next) (code val)))
+        (if (eq? next 'BREAK)
+          res
+          (trampoline-loop next res))))")
+    
+      
+
+    "やっていることは、手続きに値を渡し、'次にすること'と結果を受け取り、それを繰り返しているだけです。BREAKは次にすることがないという意味のシンボルです。"
+    "最初に手続きに値を渡したときにスタックフレームが1増えますが、次にすることと結果を返すことで増えたスタックフレームを1減らします。つまり、りくつの上では、追加のスタックフレームの個数は1でよくなります。"
+
+    "実行のイメージを掴むためにfactorialをtrampoline-loopで実行する例も貼っておきます。↓"
+    (pre "(define (fact v1)
+    (if (zero? (car v1))
+      (values (cdr v1) 'BREAK)
+      (values (cons (- (car v1) 1) (+ (car v1) (cdr v1)))
+              fact)))
+
+(trampoline-loop fact '(10 . 0));55")
+
+"トランポリンとCPS変換をどうつなげるのかということですが、上のtrampoline-loop例でのnextはCPS変換での渡ってきた継続で、resは継続に渡す値という対応になっています。"
+
+
+(h3 "Chicken Schemeの紹介")
+(a (@ (href "https://www.call-cc.org/")) "Chicken Scheme")
+"というSchemeからC言語へ変換する処理系の紹介をします。私と同じ方針を採用しているので良さそうな機構をもってくれば私の処理系も強化することでしょう。"
+"毎回トランポリンする場合オーバーヘッドが大きくなるため、この処理系では、単純にすべてのケースでトランポリンするのではなく、スタックを併用して使って、オーバーフローしそうになったらトランポリンするという方針を取っています。"
+"CPS変換しているのでトランポリンまではreturnせず、スタックは短くならないようになっているため、closureやデータ構造をヒープに割り当てて、スタックの中が増えてくるとコピーGC(新しく作ったスタックに)します。"
+"詳細はChicken Scheme論文(CONS Should Not CONS Its Arguments, Part II: Cheney on the M.T.A. 1)にかかれています。手抜きですんません。おわり。"
+
+      )))
