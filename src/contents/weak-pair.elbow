@@ -1,0 +1,79 @@
+((*contents-date* "2020-06-19")
+ (*contents-title* "Weak-pair memo (Scheme)")
+ ;(*contents-draft* #t)
+ (*contents-tags* ("Scheme"))
+ (*contents-head-tag*
+    ((meta (@ (name "twitter:card")(content "summary")))
+     (meta (@ (name "og:title")(content "Weakpair memo")))
+     (meta (@ (name "og:description")(content  "Weak pairについてのまとめ")))
+     (meta (@ (name "og:image")(content "https://niyarin.github.io/contents_resources/scheme_niyarin.png")))))
+ (*contents-body*
+   (begin
+    `(div (div "weak-pairというデータ構造がある。"
+               (br)
+               "これはcar部が弱参照でcdr部が強参照なペアで、SchemeだとMit/GNU Schemeで処理系依存の機能として提供されていたりする。"
+               (a (@ (href "https://www.gnu.org/software/mit-scheme/documentation/mit-scheme-ref/Weak-Pairs.html"))
+               "→ 10.7.1 Weak Pairs")
+               (br)
+               "標準の仕様としては、より高度なデータ構造Ephemeronが R7RS large/SRFI-124で定義されている。"
+               (br)
+               "図はこんな感じ。弱参照を"
+               (span (@ (style "color:#6C8EBF")) "青")
+               "、強参照を"
+               (span (@ (style "color:#B85450")) "赤")
+               "としている。"
+               (br)
+               ,(if (null? *contents-root-relative-path*)
+                     ""
+                     `(img (@ (src ,(string-append *contents-root-relative-path* "/contents_resources/202006/weak-pair.png"))
+                              (width "200px")
+                              (style "border:solid 1px;margin:10px;"))))
+               (br)
+               (h4 "通常のconsセルと違う点(Mit/GNU Schemeの例)")
+               (ul (li "carが回収済み(broken)の時、weak-car(weak-pair用のcar)すると#fが帰ってくる。")
+                   (li "carが回収済み(broken)かの述語が提供されている。")))
+         ;;weak list
+          (h2 "弱リスト")
+          "通常のconsで作ったリストのようにWeak Pairsでリストを構築するとWeak listができる。"
+          (br)
+          ,(if (null? *contents-root-relative-path*)
+               ""
+               `(img (@ (src ,(string-append *contents-root-relative-path* "/contents_resources/202006/weak-list.png"))
+                        (width "400px")
+                        (style "border:solid 1px;margin:10px;"))))
+          (br)
+          "ただ、carが回収済みなセルを消す実装をしたい場合、Schemeにはfinalizeのような機構があまり提供されないので少し面倒かもしれない。"
+          (br)
+          "cdr時に生存判定して、消していくとか?"
+          ;;weak vector
+          (h2 "弱ベクタ")
+          "cdrを無視すれば、弱参照のboxとしても使えるのでれをそのままvectorの各要素に入れればweak-vectorが作れる。"
+          (br)
+          ,(if (null? *contents-root-relative-path*)
+               ""
+               `(img (@ (src ,(string-append *contents-root-relative-path* "/contents_resources/202006/weak-vector.png"))
+                        (width "320px")
+                        (style "border:solid 1px;margin:10px;"))))
+
+          (h2 "弱連想リスト")
+          "弱連想リストは、"
+          (ul (li "keyが弱参照、valが強参照")
+              (li "keyが強参照、valが弱参照")
+              (li "keyが弱参照、valが弱参照"))
+          "のパターンがある。"
+          (br)
+          "下の図は、keyが弱参照、valが強参照の弱連想listの例で、通常のSchemeの連想リストと違う構造になっている。"
+          "図が上下しているからわかりにくいが、実質奇数番目が弱参照で偶数番目が強参照のただの平らなリストで表現している。"
+          "偶数番目もweak-pairを使えば両方弱参照の連想リストが作れるし、偶数奇数の強弱を入れ替えればkeyが強参照、valが弱参照のものも作れる。"
+          (br)
+          ,(if (null? *contents-root-relative-path*)
+               ""
+               `(img (@ (src ,(string-append *contents-root-relative-path* "/contents_resources/202006/weak-alist.png"))
+                        (width "400px")
+                        (style "border:solid 1px;margin:10px;"))))
+          (br)
+          "keyが弱参照,valが弱参照のものは通常のSchemeの連想リストと同じ構造でweak-pairを用いて構築してもたしかに性質は変わらない。"
+          "ただ、Ephemeronに置き換えた時に少し違う挙動になる。"
+          "Ephemeronはcdrのオブジェクトからcarのオブジェクトに強参照していても、他に強参照がなければ回収できるという特徴をもつ。"
+          "つまり、通常のSchemeと同じ構造のEphemeronを使った連想リストは、他の部分から強参照があっても回収できないが、上の図の構造で実装するとそれが可能になるという違いがでてくる。"
+          ))))
