@@ -47,7 +47,7 @@
           "cdr時に生存判定して、消していくとか?"
           ;;weak vector
           (h2 "弱ベクタ")
-          "cdrを無視すれば、弱参照のboxとしても使えるのでれをそのままvectorの各要素に入れればweak-vectorが作れる。"
+          "car部を弱参照のboxとしても使えるので、それをそのままvectorの各要素に入れればweak-vectorが作れる。"
           (br)
           ,(if (null? *contents-root-relative-path*)
                ""
