@@ -30,7 +30,7 @@ body{
 
 @media only screen and (min-width:800px) {
     .sidemenu-wrapper{
-        width:240px;
+        width:280px;
         background-color:#555555;
         overflow:hidden;
     }
@@ -45,17 +45,17 @@ body{
     background-color:#FFFFFF;
     min-height:120px;
     margin-top:10px;
+    padding:5px;
     color:#666666;
     word-wrap: break-word;
 }
 
 .sidemenu-box h4 {
-
-    margin:0;
+    margin:0px 0px 5px 0px;
 }
 
 .main-contents {
-    color:#666666;
+    color:#444444;
     background-color:#FFFFFF;
     padding:30px;
     min-height:93%;
@@ -83,6 +83,7 @@ body{
     color:#999999;
     font-size:16px;
     font-weight: bold;
+    float:right;
 }
 
 .inner-contents {
@@ -91,6 +92,8 @@ body{
 
 h1 {
     border-bottom: 2px solid #AAAAAA;
+    margin-bottom:7px;
+    color:#555555;
 }
 
 h3 {
@@ -109,4 +112,9 @@ h3 {
 .tagbox {
     background-color:#DDDDDD;
     margin:3px;
+}
+
+.contents-pair{
+   border-bottom:1px solid #EEEEEE;
+   padding-bottom:10px;
 }
