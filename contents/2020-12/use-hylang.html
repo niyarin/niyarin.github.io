@@ -1,0 +1,70 @@
+<html lang="ja"><head><meta name="twitter:card" content="summary"/><meta name="og:title" content="Hylangってのをさわった"/><meta name="og:description" content=" Hylangを触ってみたよという内容"/><meta name="og:image" content="https://niyarin.github.io/contents_resources/scheme_niyarin.png"/><script src="../../contents_resources/script/prism.js"></script><link rel="stylesheet" href="../../contents_resources/script/prism.css"/><title>Niyarin's blog</title><meta charset="utf-8"/><link rel="stylesheet" type="text/css" href="../../resources/style.css"/><script>
+            var state = 0;
+            function hamburger_click(){
+               var sidemenu = document.getElementById("sidemenu");
+               if (state == 0){
+                  sidemenu.style.display = "block";
+                  var hamburger = document.getElementById("hamburger");
+                  hamburger.style["color"] = "#FF9900";
+                  state = 1;
+               }else {
+                  sidemenu.style.display = "none";
+                  var hamburger = document.getElementById("hamburger");
+                  hamburger.style["color"] = "#000000";
+                  state = 0;
+               }
+            }
+
+            function main_click(){
+               if (state == 1){
+                  var sidemenu = document.getElementById("sidemenu");
+                  sidemenu.style.display = "none";
+                  hamburger.style["color"] = "#000000";
+                  state = 0;
+               }
+            }
+          </script></head><body><div class="page-wrapper"><div class="sidemenu-wrapper" id="sidemenu"><div class="sidemenu"><div class="sidemenu-box"><h4>#Author</h4><a href="../../contents/about_me.html">Niyarin</a><br></br>SchemerでClojurian.</div><div class="sidemenu-box"><span class="tag"><h4>#Tags</h4><div><div><a href="../../tags/Clojure.html"><span class="tagbox">Clojure</span></a><br></br></div><div><a href="../../tags/マイナーLisp.html"><span class="tagbox">マイナーLisp</span></a><br></br></div><div><a href="../../tags/Hylang.html"><span class="tagbox">Hylang</span></a><br></br></div><div><a href="../../tags/Scheme.html"><span class="tagbox">Scheme</span></a><br></br></div></div></span></div><div class="sidemenu-box"><h4>#Recent entries</h4><div><div style="margin-bottom:10px;border-bottom:1px solid #EEEEEE;">2020-12-01:<a href="../../contents/2020-12/use-hylang.html">Hylangってのをさわった</a></div><div style="margin-bottom:10px;border-bottom:1px solid #EEEEEE;">2020-06-19:<a href="../../contents/2020-6/weak-pair.html">Weak-pair memo (S...</a></div><div style="margin-bottom:10px;border-bottom:1px solid #EEEEEE;">2019-12-22:<a href="../../contents/2019-12/my-scm-plan.html">あとで実装するありがちなSchem...</a></div><div style="margin-bottom:10px;border-bottom:1px solid #EEEEEE;">2019-12-08:<a href="../../contents/2019-12/my-sample-play-cljc.html">Play-cljcを使おう</a></div><div style="margin-bottom:10px;border-bottom:1px solid #EEEEEE;">2019-12-04:<a href="../../contents/2019-12/chez-callcc.html">Chezのcall/cc論文の紹介...</a></div></div></div></div></div><div class="main-wrapper"><div class="head-menu"><a class="hamburger-button" id="hamburger" onclick="hamburger_click()">≡</a><span class="sub-main-contents-title"><a href="../../index.html">Niyarin's blog</a></span></div><div class="main" onclick="main_click()"><div class="main-contents"><header class="main-contents-title"><a href="../../index.html">Niyarin's blog</a></header><div class="inner-contents"><h1>Hylangってのをさわった</h1><span>Tags:<a href="../../tags/Hylang.html"><span class="tagbox">Hylang</span></a><a href="../../tags/マイナーLisp.html"><span class="tagbox">マイナーLisp</span></a></span><div class="time-box">2020-12-01</div><br/><br/><div><a href="https://adventar.org/calendars/5247">Kobe University Advent Calendar 2020</a> の1日目の記事です。(書いたのは翌日ですが)<br/>かつてKobe Universityで学生していました。入学前は神戸だしおしゃれな街中の大学だと思っていたのに入学してみたらャンパスが山の中で猪が闊歩していました。その上、立地がアレなせいなのか、大学近くのめしやもうどん屋が一軒しかありませんでしたよ。まあ、いい思い出です。ちなみに今は都会で修士学生しています。<br/><br/>さて、本記事の内容ですがAdvent Calendarみたいな機会でもないと調べないようなことを消費しただけです。HylangというPythonのASTに変換されるS式言語をちょっと触ってみたという程度です。<h2>Hylangについて</h2>思いつくまま、気になったことを動かして納得しました。<h3>CLIツール</h3>Hylangは、PythonのBytecodeを吐くS式言語として知られていますが、Pythonのコードにも変換できるhy2pyというCLIツールが用意されています。(<a href="https://docs.hylang.org/en/stable/language/cli.html">https://docs.hylang.org/en/stable/language/cli.html</a>) Python VM言語というだけでなく、Alt Python的な存在のようです。ただ、コメントとかまで移植されているわけではないので、TypeScriptのように、開発が止まっても変換してその後もメンテしていけるほどのものではなさそうです。そして、普通のスクリプト言語にありがちな、プログラム名だけの"hy"と入力すれば、REPLが立ち上がり、ファイル名をコマンドライン引数として与えればそれを実行してくれます。あとは、hycというhyコードを"pyc"ファイルに変換してくれるツールもあります。<h3>Hylangのmapとかfilterとか</h3>HylangはLispのように記述し、Pythonのように動く言語です。そのため、LispユーザがHylangを書くと思ったように動かないことがあります。Pythonは3系では、map関数はリストではなくイテレータを返すのですが、Hylangもそこは同じです。map手続き/関数は、Schemeでは通常のリストを返し、Clojureでは遅延シーケンスを返すので、2回以上最初の要素を取り出す操作(carとかfirst)をしても結果は変わりませんが、Hylangではこうなります。<pre class="line-numbers language-text"><code class="language-text">=> (setv ls (map inc '(0 1 2 3 4 5)))
+=> ls
+&lt;map object at 0x7f73689d8e50&gt;
+=> (first ls)
+1
+=> (first ls)
+2
+=> (first ls)
+3
+=>
+</code></pre><h3>Hylangとマクロ</h3>Hylangは通常のLispのようにマクロが使えます。Clojure等と大差はないです。ここではThreading macroを書いてみます。HylangにはすでにThreading macroがありますので、myを頭に付けていますが。例をみれば分かりますが、Hylangにはletが組み込みのsyntaxではないです。Threading macroよりこちらのほうが優先度が高い気がするのですが、不思議ですね。もちろんletもマクロで書けます。<pre class="line-numbers language-clojure"><code class="language-clojure">(defmacro my->> [x &rest rests]
+  (if rests
+      ((fn [r]
+        (if (or (list? r) (isinstance r HyExpression))
+          `(my->> ~(+ r [x]) ~@(list (rest rests)))
+          `(my->> (~r ~x) ~@(list (rest rests)))))
+       (first rests))
+      x))
+
+(print (my->> '(0 1 2 3 4 5)
+              (map inc)
+              list
+              reversed
+              list))
+[6, 5, 4, 3, 2, 1]</code></pre><h3>Hylangの記号を含む変数の扱い</h3>前のThreading macroのようにHylangは他のLispと同じように多くの記号を変数に使えます。HylangはPython(あるいはそのバイトコード)に変換できる必要があるため、内部で末尾の?は'?'を消して、頭にis_をつけます。<pre class="line-numbers language-text"><code class="language-text">=> list?
+&lt;function is_list at 0x7f736889f710&gt;
+=> seq?
+Traceback (most recent call last):
+  File "stdin-15d957270d643dda7d9753401ac9073eb36c061e", line 1, in %lt;module&gt;
+    seq?
+NameError: name 'is_seq' is not defined</code></pre><br/>他の記号は'?'ほど人間に易しい変換はされません。<pre class="line-numbers language-text"><code class="language-text">=> set!
+Traceback (most recent call last):
+  File "stdin-1618e7ba6d820060d00aa35235d94b1aa7db693e", line 1, in &lt;module&gt;
+    set!
+NameError: name 'hyx_setXexclamation_markX' is not defined</code></pre><h3>かっことHylang</h3>HylangのリストとPythonの各種コンテナの対応関係についてです。丸括弧すると、Hylang特有のオブジェクトHyExpressionが返ります。角括弧はPythonのリストが返ってきます。<pre class="line-numbers language-text"><code class="language-text">=> '(1 2 3)
+HyExpression([
+  HyInteger(1),
+  HyInteger(2),
+  HyInteger(3)])
+=> [1 2 3]
+[1, 2, 3]</code></pre><br/>setと辞書はClojureと同じです。<pre class="line-numbers language-text"><code class="language-text">=> (isinstance #{1 2 3} set)
+True
+=> (isinstance {"a" 1 "b" 2 "c" 3} dict)
+True</code></pre><br/>タプルは特別なリテラルがなく、コンマで作ります。<pre class="line-numbers language-text"><code class="language-text">=> (, 1 2 3)
+ (1, 2, 3)</code></pre><h2>おわりに</h2>HylangはPythonのガワが弱いなと思った人にはとても良いものになると思います。</div></div></div></div></div></div></body></html>
