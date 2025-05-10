@@ -1,0 +1,66 @@
+<html lang="ja"><head><meta name="twitter:card" content="summary"/><meta name="og:title" content="継続マーカーでdynamic-windを実装する"/><meta name="og:description" content="継続マーカーでdynamic-windを実装する方法を解説する。"/><meta name="og:image" content="https://niyarin.github.io/contents_resources/scheme_niyarin.png"/><script src="../../contents_resources/script/prism.js"></script><link rel="stylesheet" href="../../contents_resources/script/prism.css"/><title>Niyarin's blog</title><meta charset="utf-8"/><link rel="stylesheet" type="text/css" href="../../resources/style.css"/><script>
+            var state = 0;
+            function hamburger_click(){
+               var sidemenu = document.getElementById("sidemenu");
+               if (state == 0){
+                  sidemenu.style.display = "block";
+                  var hamburger = document.getElementById("hamburger");
+                  hamburger.style["color"] = "#FF9900";
+                  state = 1;
+               }else {
+                  sidemenu.style.display = "none";
+                  var hamburger = document.getElementById("hamburger");
+                  hamburger.style["color"] = "#000000";
+                  state = 0;
+               }
+            }
+
+            function main_click(){
+               if (state == 1){
+                  var sidemenu = document.getElementById("sidemenu");
+                  sidemenu.style.display = "none";
+                  hamburger.style["color"] = "#000000";
+                  state = 0;
+               }
+            }
+          </script></head><body><div class="page-wrapper"><div class="sidemenu-wrapper" id="sidemenu"><div class="sidemenu"><div class="sidemenu-box"><h4>#Author</h4><a href="../../contents/about_me.html">Niyarin</a><br></br>SchemerでClojurian.</div><div class="sidemenu-box"><span class="tag"><h4>#Tags</h4><div><div><a href="../../tags/Scheme.html"><span class="tagbox">Scheme</span></a><br></br></div><div><a href="../../tags/Clojure.html"><span class="tagbox">Clojure</span></a><br></br></div><div><a href="../../tags/Hylang.html"><span class="tagbox">Hylang</span></a><br></br></div><div><a href="../../tags/マイナーLisp.html"><span class="tagbox">マイナーLisp</span></a><br></br></div></div></span></div><div class="sidemenu-box"><h4>#Recent entries</h4><div><div style="margin-bottom:10px;border-bottom:1px solid #EEEEEE;">2025-05-10:<a href="../../contents/2025-5/dynamic-wind-with-cm.html">継続マーカー(continuati...</a></div><div style="margin-bottom:10px;border-bottom:1px solid #EEEEEE;">2020-12-01:<a href="../../contents/2020-12/use-hylang.html">Hylangってのをさわった</a></div><div style="margin-bottom:10px;border-bottom:1px solid #EEEEEE;">2020-06-19:<a href="../../contents/2020-6/weak-pair.html">Weak-pair memo (S...</a></div><div style="margin-bottom:10px;border-bottom:1px solid #EEEEEE;">2019-12-22:<a href="../../contents/2019-12/my-scm-plan.html">あとで実装するありがちなSchem...</a></div><div style="margin-bottom:10px;border-bottom:1px solid #EEEEEE;">2019-12-08:<a href="../../contents/2019-12/my-sample-play-cljc.html">Play-cljcを使おう</a></div></div></div></div></div><div class="main-wrapper"><div class="head-menu"><a class="hamburger-button" id="hamburger" onclick="hamburger_click()">≡</a><span class="sub-main-contents-title"><a href="../../index.html">Niyarin's blog</a></span></div><div class="main" onclick="main_click()"><div class="main-contents"><header class="main-contents-title"><a href="../../index.html">Niyarin's blog</a></header><div class="inner-contents"><h1>継続マーカー(continuation marks)でdynamic-windを実装する</h1><span>Tags:<a href="../../tags/Scheme.html"><span class="tagbox">Scheme</span></a></span><div class="time-box">2025-05-10</div><br/><br/><div><div>この記事ではdynamic-windを継続マーカーを使って実装する方法を紹介します。</div><div><h2>dynamic-wind</h2><div>dynamic-windは、式に対して継続での突入と脱出に対するハンドラを設定する関数(手続き)です。継続があるプログラミング言語では、ある式の前処理と後処理のスキップがおこりうるため、補足して必要な前処理や後処理を実行する機構が必要です。</div></div><div>dynamic-windの実装方法としては、<a href="https://www.scheme.com/tspl4/">The Scheme Programming Language</a>で紹介されているような継続にハンドラを保存する方法が知られています。dynamic-windが呼ばれると、グローバルにスタック状にハンドラを保存します。またcall/ccをラップして継続に、グローバルに保存したハンドラ達のコピーをもたせておきます。これで継続を呼んだときに、継続自身に保存されたハンドラ達のコピーと現在のグローバルのハンドラ達を比較して呼び出すべきハンドラを実行するようにします。</div><div><h2>継続マーカーを使ったdynamic-windの実装</h2>継続マーカーを使ったdynamic-windの実装方法について説明します。ここで紹介する方法は、本質的には'The Scheme Programming Language'のものと同じです。<div>継続マーカーは、スタックフレームに値を保存する機能です。グローバルやクロージャを使ってハンドラを継続に保存する代わりに継続マーカでハンドラを継続にもたせます。</div></div><div><h2>ソースコード</h2><pre class="line-numbers language-text"><code class="language-scheme">(define-library (my dynamic-wind)
+  (import (scheme base)
+          (srfi 226))
+  (export my-call/cc my-dynamic-wind)
+  (begin
+    (define handlers-key (vector 'handlers))
+
+    (define (remove-common-head ls1 ls2)
+      (let loop ((ls1 ls1)
+                 (ls2 ls2))
+        (if (or (null? ls1)
+                (null? ls2)
+                (not (eq? (car ls1)
+                          (car ls2))))
+          (values ls1 ls2)
+          (loop (cdr ls1) (cdr ls2)))))
+
+    (define (do-winders caller-handlers cont-handlers)
+      (let-values (((use-caller-handlers  use-cont-handlers) (remove-common-head caller-handlers cont-handlers)))
+        (for-each (lambda (handler-pair) ((cdr handler-pair)))
+                  use-caller-handlers)
+        (for-each (lambda (handler-pair) ((car handler-pair)))
+                  (reverse use-cont-handlers))))
+
+    (define (my-call/cc f)
+      (call/cc
+        (lambda (k0)
+          (f (let ((cont-mark-set (continuation-marks k0)))
+               (lambda v
+                 (let ((caller-mark-set (current-continuation-marks)))
+                   (do-winders (reverse (continuation-mark-set->list caller-mark-set handlers-key))
+                               (reverse (continuation-mark-set->list cont-mark-set handlers-key)))
+                   (apply k0 v))))))))
+
+    (define (my-dynamic-wind before body after)
+      (before)
+      (call-with-values
+        (lambda ()
+          (with-continuation-mark handlers-key (cons before after)
+              (body)))
+        (lambda v (after) v)))))</code></pre></div></div></div></div></div></div></div></body></html>

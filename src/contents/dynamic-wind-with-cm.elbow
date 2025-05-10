@@ -1,0 +1,75 @@
+((*contents-date* "2025-05-10")
+ (*contents-title* "継続マーカー(continuation marks)でdynamic-windを実装する")
+ (*contents-tags* ("Scheme"))
+ (*contents-head-tag*
+    ((meta (@ (name "twitter:card")(content "summary")))
+     (meta (@ (name "og:title")(content "継続マーカーでdynamic-windを実装する")))
+     (meta (@ (name "og:description")(content  "継続マーカーでdynamic-windを実装する方法を解説する。")))
+     (meta (@ (name "og:image")(content "https://niyarin.github.io/contents_resources/scheme_niyarin.png")))
+     (script (@ (src "../../contents_resources/script/prism.js")) "")
+     (link (@ (rel "stylesheet")
+              (href "../../contents_resources/script/prism.css")))))
+ (*contents-body*
+ (begin
+    `(div
+      (div "この記事ではdynamic-windを継続マーカーを使って実装する方法を紹介します。")
+      (div (h2 "dynamic-wind")
+           (div "dynamic-windは、式に対して継続での突入と脱出に対するハンドラを設定する関数(手続き)です。"
+                "継続があるプログラミング言語では、ある式の前処理と後処理のスキップがおこりうるため、補足して必要な前処理や後処理を実行する機構が必要です。"))
+      (div "dynamic-windの実装方法としては、"
+        (a (@ (href "https://www.scheme.com/tspl4/")) "The Scheme Programming Language")
+        "で紹介されているような継続にハンドラを保存する方法が知られています。"
+        "dynamic-windが呼ばれると、グローバルにスタック状にハンドラを保存します。"
+        "またcall/ccをラップして継続に、グローバルに保存したハンドラ達のコピーをもたせておきます。"
+        "これで継続を呼んだときに、継続自身に保存されたハンドラ達のコピーと現在のグローバルのハンドラ達を比較して呼び出すべきハンドラを実行するようにします。")
+
+      (div (h2 "継続マーカーを使ったdynamic-windの実装")
+           "継続マーカーを使ったdynamic-windの実装方法について説明します。"
+           "ここで紹介する方法は、本質的には'The Scheme Programming Language'のものと同じです。"
+           (div "継続マーカーは、スタックフレームに値を保存する機能です。"
+                "グローバルやクロージャを使ってハンドラを継続に保存する代わりに継続マーカでハンドラを継続にもたせます。"))
+
+      (div (h2 "ソースコード")
+        (pre (@ (class "line-numbers language-text">))
+             (code (@ (class "language-scheme"))
+"(define-library (my dynamic-wind)
+  (import (scheme base)
+          (srfi 226))
+  (export my-call/cc my-dynamic-wind)
+  (begin
+    (define handlers-key (vector 'handlers))
+
+    (define (remove-common-head ls1 ls2)
+      (let loop ((ls1 ls1)
+                 (ls2 ls2))
+        (if (or (null? ls1)
+                (null? ls2)
+                (not (eq? (car ls1)
+                          (car ls2))))
+          (values ls1 ls2)
+          (loop (cdr ls1) (cdr ls2)))))
+
+    (define (do-winders caller-handlers cont-handlers)
+      (let-values (((use-caller-handlers  use-cont-handlers) (remove-common-head caller-handlers cont-handlers)))
+        (for-each (lambda (handler-pair) ((cdr handler-pair)))
+                  use-caller-handlers)
+        (for-each (lambda (handler-pair) ((car handler-pair)))
+                  (reverse use-cont-handlers))))
+
+    (define (my-call/cc f)
+      (call/cc
+        (lambda (k0)
+          (f (let ((cont-mark-set (continuation-marks k0)))
+               (lambda v
+                 (let ((caller-mark-set (current-continuation-marks)))
+                   (do-winders (reverse (continuation-mark-set->list caller-mark-set handlers-key))
+                               (reverse (continuation-mark-set->list cont-mark-set handlers-key)))
+                   (apply k0 v))))))))
+
+    (define (my-dynamic-wind before body after)
+      (before)
+      (call-with-values
+        (lambda ()
+          (with-continuation-mark handlers-key (cons before after)
+              (body)))
+        (lambda v (after) v)))))")))))))
