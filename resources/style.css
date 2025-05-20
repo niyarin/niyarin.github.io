@@ -40,11 +40,10 @@ body{
 .sidemenu-wrapper{
     width:280px;
     background-color:#555555;
-    overflow:hidden;
 }
 
 
-@media only screen and (max-width:853px) {
+@media only screen and (max-width:1000px) {
     .sidemenu-wrapper{
         display:none;
     }
@@ -75,7 +74,7 @@ body{
     }
 }
 
-@media only screen and (min-width:853px) {
+@media only screen and (min-width:1000px) {
     .head-menu {
         display:none;
     }
