@@ -73,4 +73,4 @@
         (lambda ()
           (with-continuation-mark handlers-key (cons before after)
               (body)))
-        (lambda v (after) v)))))")))))))
+        (lambda v (after) (apply values v))))))")))))))
